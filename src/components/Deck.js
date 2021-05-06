@@ -30,12 +30,20 @@ class Deck extends Component {
             (imgWidthAsPercentage / 100) * window.screen.width :
             (imgWidthAsPercentage / 100) * window.innerWidth; 
 
+        //let widthToHeightRatio = parseFloat(this.viewPort.style.width) / parseFloat(this.viewPort.style.height);
+
         this.viewPort.style.width = `${this.newWidth}px`;
+
+        //this.viewPort.style.height = `${this.newWidth / widthToHeightRatio}px`;
+
         this.navButtonsContainer.style.width = `${navButtonsPlacementAsPercentage}vw`;
         this.buttonPrev.style.width = `${(this.newWidth / 2) * 0.30}px`;
         this.buttonNext.style.width = `${(this.newWidth / 2) * 0.30}px`;
 
-        this.selectionButtonsContainer.style.bottom = `${this.viewPort.getBoundingClientRect().top}px`;
+        //this.selectionButtonsContainer.style.bottom = `${this.viewPort.getBoundingClientRect().top}px`;
+                
+        this.selectionButtonsContainer.style.bottom = `${this.images.children.bottom}px`;
+
         for(let i = 0; i < this.images.children.length; i++) {
             this.selectionButtonsContainer.children[i].transitionDuration = "0.0s";
             this.selectionButtonsContainer.children[i].style.width = `${this.newWidth * 0.05}px`;
@@ -55,11 +63,15 @@ class Deck extends Component {
                 (imgWidthAsPercentage / 100) * window.innerWidth; 
 
             this.viewPort.style.width = `${this.newWidth}px`;
+
+            //this.viewPort.style.height = `${this.newWidth / widthToHeightRatio}px`;
+
             this.navButtonsContainer.style.width = `${navButtonsPlacementAsPercentage}vw`;
             this.buttonPrev.style.width = `${(this.newWidth / 2) * 0.30}px`;
             this.buttonNext.style.width = `${(this.newWidth / 2) * 0.30}px`;
 
-            this.selectionButtonsContainer.style.bottom = `${this.viewPort.getBoundingClientRect().top}px`;
+            this.selectionButtonsContainer.style.bottom = `${this.viewPort.getBoundingClientRect().top}px`;  
+
             for(let i = 0; i < this.images.children.length; i++) {
                 this.selectionButtonsContainer.children[i].transitionDuration = "0.0s";
                 this.selectionButtonsContainer.children[i].style.width = `${this.newWidth * 0.05}px`;
@@ -67,11 +79,29 @@ class Deck extends Component {
             }
 
             this.orderCards();
+
+            this.rightBoundary = parseFloat(this.images.children[this.numberOfCardsByIndex].style.left) + this.newWidth;
+            this.leftBoundary = parseFloat(this.images.children[0].style.left) - this.newWidth;
+
+            for (let i = 0; i < this.images.children.length; i++) {
+                this.lastPositions[i] = parseFloat(this.images.children[i].style.left);            
+            }
         });
+        
         /* ********************************************************** */
 
-        /* ********************* Button Navigation ****************** */
+        this.lastPositions = [];
+        this.rightBoundary = parseFloat(this.images.children[this.numberOfCardsByIndex].style.left) + this.newWidth;
+        this.leftBoundary = parseFloat(this.images.children[0].style.left) - this.newWidth;
 
+        for (let i = 0; i < this.images.children.length; i++) {
+            this.lastPositions.push(parseFloat(this.images.children[i].style.left));
+            
+        }
+
+        /* ********************* Button Navigation ****************** */
+        this.scrollInProgress = false;
+        
 
         
         /* ********************************************************** */
@@ -110,12 +140,77 @@ class Deck extends Component {
         }
     }
 
+    handleBoundaries = () => {
+        if (this.lastPositions[0] <= this.leftBoundary) {
+            const endOfDeck = this.lastPositions[this.numberOfCardsByIndex] + this.newWidth;
+
+            this.images.children[0].style.left = `${endOfDeck}px`;            
+            this.lastPositions[0] = endOfDeck;
+
+            this.images.appendChild(this.images.children[0], this.images.children[this.numberOfCardsByIndex]);
+            this.lastPositions.splice(this.numberOfCardsByIndex, 0, this.lastPositions.shift());
+        }
+        if (this.lastPositions[this.numberOfCardsByIndex] >= this.rightBoundary) {
+         const beginningOfDeck = this.lastPositions[0] - this.newWidth;
+
+            this.images.children[this.numberOfCardsByIndex].style.left = `${beginningOfDeck}px`;            
+            this.lastPositions[this.numberOfCardsByIndex] = beginningOfDeck;
+
+            this.images.insertBefore(this.images.children[this.numberOfCardsByIndex], this.images.children[0]);
+            this.lastPositions.splice(0, 0, this.lastPositions.pop());
+        }
+    }
+
+    handleNext = () => {
+        if (this.scrollInProgress) return;   
+        
+        this.scrollInProgress = true;
+        
+        for (let i = 0; i < this.images.children.length; i++) {
+            this.images.children[i].style.transitionDuration = "0.0s";
+
+            const updatedPosition = this.lastPositions[i] - this.newWidth;
+            
+            this.images.children[i].style.left = `${updatedPosition}px`;            
+            this.lastPositions[i] = updatedPosition;
+           
+        }
+
+        this.handleBoundaries();
+
+        setTimeout(() => {
+            this.scrollInProgress = false;
+        }, 200);
+    }
+
+    handlePrev = () => {
+        if (this.scrollInProgress) return;   
+        
+        this.scrollInProgress = true;
+        
+        for (let i = 0; i < this.images.children.length; i++) {
+            this.images.children[i].style.transitionDuration = "0.0s";
+
+            const updatedPosition = this.lastPositions[i] + this.newWidth;
+            
+            this.images.children[i].style.left = `${updatedPosition}px`;            
+            this.lastPositions[i] = updatedPosition;
+           
+        }
+
+        this.handleBoundaries();
+
+        setTimeout(() => {
+            this.scrollInProgress = false;
+        }, 200);
+    }
+
     render() {
         return (
             <Fragment>
                 <div ref={refId => this.navButtonsContainer = refId} style={styles.navButtonsContainer}>
-                    <img ref={refId => this.buttonPrev = refId} style={styles.navButton} src="./left-chevron.png" alt="prev" id="prev" />
-                    <img ref={refId => this.buttonNext = refId} style={styles.navButton} src="./right-chevron.png" alt="next" id="next" />
+                    <img onClick={this.handlePrev} ref={refId => this.buttonPrev = refId} style={styles.navButton} src="./left-chevron.png" alt="prev" id="prev" />
+                    <img onClick={this.handleNext} ref={refId => this.buttonNext = refId} style={styles.navButton} src="./right-chevron.png" alt="next" id="next" />
                 </div>
                 <div ref={refId => this.viewPort = refId} style={styles.viewPort}>
                     <div ref={refId => this.images = refId} style={styles.imagesContainer}> 
@@ -146,7 +241,7 @@ const styles = {
         left: "50%",
         transform: "translate(-50%, -50%)",
         //overflow: "hidden",
-        //backgroundColor: "red"
+        backgroundColor: "red"
     },
     imagesContainer: {
         margin: 0,
@@ -197,7 +292,8 @@ const styles = {
         backgroundColor: "rgba(0, 0, 255, 0.4)"
     },
     selectionButton: {
-        marginRight: "15px",
+        marginRight: "7.5px",
+        marginLeft: "7.5px",
         padding: 0,
         width: "20px",
         height: "20px",
