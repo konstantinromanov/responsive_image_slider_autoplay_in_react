@@ -9,7 +9,8 @@ class Deck extends Component {
             cards: [
                 <Card picsum={"https://picsum.photos/800/350"} id="one" key="one" />,
                 <Card picsum={"https://picsum.photos/800/352"} id="two" key="two" />,
-                <Card picsum={"https://picsum.photos/800/353"} id="three" key="three" />
+                <Card picsum={"https://picsum.photos/800/353"} id="three" key="three" />,
+                <Card picsum={"https://picsum.photos/800/354"} id="four" key="four" />
             ]
         }
     }
@@ -17,7 +18,7 @@ class Deck extends Component {
     componentDidMount() {
         this.numberOfCardsByIndex = this.images.children.length - 1;
         this.middleCardByIndex = Math.floor(this.numberOfCardsByIndex / 2);
-
+        this.currentCard = this.middleCardByIndex;
 
         /* ********************* Responsive Code ******************** */
 
@@ -51,6 +52,8 @@ class Deck extends Component {
         }
 
         this.orderCards();
+
+        this.updateSelection();
 
         window.addEventListener("resize", () => {
             imgWidthAsPercentage = 50;
@@ -95,29 +98,40 @@ class Deck extends Component {
         this.leftBoundary = parseFloat(this.images.children[0].style.left) - this.newWidth;
 
         for (let i = 0; i < this.images.children.length; i++) {
-            this.lastPositions.push(parseFloat(this.images.children[i].style.left));
-            
+            this.lastPositions.push(parseFloat(this.images.children[i].style.left));            
         }
 
         /* ********************* Button Navigation ****************** */
-        this.scrollInProgress = false;
-        
 
-        
-        /* ********************************************************** */
-
-        /* ********************* Selection Navigation *************** */
-
-
+        this.scrollInProgress = false;      
         
         /* ********************************************************** */
+
+        
 
         /* ********************* Autoplay Code ********************** */
 
-
+        this.autoplayTimeoutId = null;
+        this.autoplayIntervalId = null;
         
         /* ********************************************************** */
+
+        /* ********************* Init Code ************************** */
+
+        this.selectionButtonsContainer.children[0].click();
+
+        /* ********************************************************** */
         
+    }
+
+    updateSelection = () => {
+        for (let i = 0; i < this.images.children.length; i++) {
+            if (i === this.currentCard) {
+                this.selectionButtonsContainer.children[i].style.backgroundColor = "red";
+            } else {
+                this.selectionButtonsContainer.children[i].style.backgroundColor = "grey";
+            }            
+        }        
     }
 
     orderCards = () => {
@@ -151,7 +165,7 @@ class Deck extends Component {
             this.lastPositions.splice(this.numberOfCardsByIndex, 0, this.lastPositions.shift());
         }
         if (this.lastPositions[this.numberOfCardsByIndex] >= this.rightBoundary) {
-         const beginningOfDeck = this.lastPositions[0] - this.newWidth;
+            const beginningOfDeck = this.lastPositions[0] - this.newWidth;
 
             this.images.children[this.numberOfCardsByIndex].style.left = `${beginningOfDeck}px`;            
             this.lastPositions[this.numberOfCardsByIndex] = beginningOfDeck;
@@ -160,6 +174,8 @@ class Deck extends Component {
             this.lastPositions.splice(0, 0, this.lastPositions.pop());
         }
     }
+
+    /* ********************* Button Navigation ****************** */   
 
     handleNext = () => {
         if (this.scrollInProgress) return;   
@@ -172,14 +188,17 @@ class Deck extends Component {
             const updatedPosition = this.lastPositions[i] - this.newWidth;
             
             this.images.children[i].style.left = `${updatedPosition}px`;            
-            this.lastPositions[i] = updatedPosition;
-           
+            this.lastPositions[i] = updatedPosition;           
         }
 
+        this.currentCard = (this.currentCard === this.numberOfCardsByIndex) ? 0 : ++this.currentCard;
+
         this.handleBoundaries();
+        this.updateSelection();
 
         setTimeout(() => {
             this.scrollInProgress = false;
+            this.startAutoplay();
         }, 200);
     }
 
@@ -194,16 +213,79 @@ class Deck extends Component {
             const updatedPosition = this.lastPositions[i] + this.newWidth;
             
             this.images.children[i].style.left = `${updatedPosition}px`;            
-            this.lastPositions[i] = updatedPosition;
-           
+            this.lastPositions[i] = updatedPosition;           
         }
 
+        this.currentCard = (this.currentCard === 0) ? this.numberOfCardsByIndex : --this.currentCard;
+
         this.handleBoundaries();
+        this.updateSelection();
 
         setTimeout(() => {
             this.scrollInProgress = false;
+            this.startAutoplay();
         }, 200);
     }
+    
+    /* ********************************************************** */
+
+    /* ********************* Selection Navigation *************** */
+
+    handleSelection = event => {
+        if (event.target === this.selectionButtonsContainer) return;
+
+        let newCard = null;
+
+        for (let i = 0; i < this.images.children.length; i++) {
+            if (event.target === this.selectionButtonsContainer.children[i]) newCard = i;            
+        }
+
+        for (let i = 0; i < this.images.children.length; i++) {
+           const updatedPosition = this.lastPositions[i] + ((this.currentCard - newCard) * this.newWidth);
+
+           this.images.children[i].style.transitionDuration = "0.0s";
+           this.images.children[i].style.left = `${updatedPosition}px`;
+           this.lastPositions[i] = updatedPosition;
+        }
+
+        for (let i = 0; i < Math.abs(this.currentCard - newCard); i++) {
+            this.handleBoundaries();            
+        }
+
+        this.currentCard = newCard;
+
+        this.updateSelection();
+        this.startAutoplay();
+    }
+        
+    /* ********************************************************** */
+
+    /* ********************* Autoplay Code ********************** */
+
+    startAutoplay = () => {
+        clearTimeout(this.autoplayTimeoutId);
+        clearInterval(this.autoplayIntervalId);
+
+        this.autoplayTimeoutId = setTimeout(() => {
+            this.autoplayIntervalId = setInterval(() => {
+                for (let i = 0; i < this.images.children.length; i++) {
+                    this.images.children[i].style.transitionDuration = "0.0s";
+        
+                    const updatedPosition = this.lastPositions[i] - this.newWidth;
+                    
+                    this.images.children[i].style.left = `${updatedPosition}px`;            
+                    this.lastPositions[i] = updatedPosition;           
+                }
+        
+                this.currentCard = (this.currentCard === this.numberOfCardsByIndex) ? 0 : ++this.currentCard;
+        
+                this.handleBoundaries();
+                this.updateSelection();
+            }, 1100)
+        }, 1200);
+    }
+        
+    /* ********************************************************** */
 
     render() {
         return (
@@ -217,7 +299,7 @@ class Deck extends Component {
                         {this.state.cards}
                     </div>
                 </div>
-                <div ref={refId => this.selectionButtonsContainer = refId} style={styles.selectionButtonsContainer}>
+                <div onClick={this.handleSelection} ref={refId => this.selectionButtonsContainer = refId} style={styles.selectionButtonsContainer}>
                     {
                         this.state.cards.map((_, i) => {
                             return (<div style={styles.selectionButton} key={i}></div>)
@@ -240,8 +322,8 @@ const styles = {
         top: "50%",
         left: "50%",
         transform: "translate(-50%, -50%)",
-        //overflow: "hidden",
-        backgroundColor: "red"
+        overflow: "hidden",
+        //backgroundColor: "red"
     },
     imagesContainer: {
         margin: 0,
@@ -266,7 +348,7 @@ const styles = {
         alignItems: "center",
         transform: "translate(-50%, -50%)",
         pointerEvents: "none",
-        zIndex: 9999
+        zIndex: 99999
     },
     navButton: {
         width: "50%",
@@ -289,7 +371,7 @@ const styles = {
         alignItems: "center",
         pointerEvents: "none",
         zIndex: 9999,
-        backgroundColor: "rgba(0, 0, 255, 0.4)"
+        //backgroundColor: "rgba(0, 0, 255, 0.4)"
     },
     selectionButton: {
         marginRight: "7.5px",
@@ -300,7 +382,7 @@ const styles = {
         borderRadius: "50%",
         backgroundColor: "grey",
         pointerEvents: "all",
-        pointer: "cursor"
+        cursor: "pointer"
     }
 }
 
